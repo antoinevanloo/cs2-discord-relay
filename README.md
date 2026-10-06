@@ -66,6 +66,7 @@
 
 1. Install **Metamod:Source** and **CounterStrikeSharp** on your server. The [CounterStrikeSharp getting started guide](https://docs.cssharp.dev/docs/guides/getting-started.html) covers both.
 2. Download `cs2-discord-relay-vX.Y.Z.zip` from the [latest release](https://github.com/antoinevanloo/cs2-discord-relay/releases/latest).
+   The same zip works on **Linux and Windows** servers: the plugin is platform-independent .NET code. Only Metamod and CounterStrikeSharp have separate Linux and Windows builds.
 3. Extract it into `game/csgo/addons/counterstrikesharp/plugins/`. You should end up with:
    ```text
    game/csgo/addons/counterstrikesharp/plugins/Cs2DiscordRelay/
