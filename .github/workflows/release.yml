@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Resolve version from tag
+        id: version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$tag' is not a semantic version (expected v1.2.3 or v1.2.3-rc.1)"
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: dotnet test -c Release -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Publish plugin
+        run: >
+          dotnet publish src/Cs2DiscordRelay -c Release
+          -p:Version=${{ steps.version.outputs.version }}
+          -o artifacts/Cs2DiscordRelay
+
+      # The zip contains a single Cs2DiscordRelay/ folder, ready to drop into
+      # game/csgo/addons/counterstrikesharp/plugins/
+      - name: Package
+        id: package
+        working-directory: artifacts
+        run: |
+          zip_name="cs2-discord-relay-${{ steps.version.outputs.tag }}.zip"
+          zip -r "$zip_name" Cs2DiscordRelay
+          sha256sum "$zip_name" > "$zip_name.sha256"
+          unzip -l "$zip_name"
+          echo "zip=artifacts/$zip_name" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          prerelease=""
+          if [[ "$TAG" == *-* ]]; then prerelease="--prerelease"; fi
+          gh release create "$TAG" \
+            "${{ steps.package.outputs.zip }}" \
+            "${{ steps.package.outputs.zip }}.sha256" \
+            --title "$TAG" \
+            --generate-notes \
+            --verify-tag \
+            $prerelease
