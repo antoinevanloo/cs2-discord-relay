@@ -16,6 +16,8 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
 {
     private const string ConfigPath = "addons/counterstrikesharp/configs/plugins/Cs2DiscordRelay/Cs2DiscordRelay.json";
 
+    // Survives relay restarts (config reloads), so a reload never re-announces everyone.
+    private readonly PresenceTracker _presence = new();
     private RelayService? _relay;
 
     /// <summary>
@@ -48,6 +50,7 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
 
         RegisterListener<Listeners.OnPlayerChat>(OnPlayerChat);
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        RegisterListener<Listeners.OnMapEnd>(_presence.MapEnding);
         RegisterEventHandler<EventPlayerConnectFull>(OnPlayerConnectFull);
         RegisterEventHandler<EventPlayerDisconnect>(OnPlayerDisconnect);
     }
@@ -95,15 +98,23 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
         Publish(new ChatMessageEvent(DateTimeOffset.UtcNow, PlayerSnapshot.From(player), message, teamChat));
     }
 
-    private void OnMapStart(string mapName) =>
+    private void OnMapStart(string mapName)
+    {
+        _presence.MapStarted();
         Publish(new MapChangedEvent(DateTimeOffset.UtcNow, mapName));
+    }
 
     private HookResult OnPlayerConnectFull(EventPlayerConnectFull @event, GameEventInfo info)
     {
         var player = @event.Userid;
         if (_relay is not null && player is { IsValid: true, IsHLTV: false })
         {
-            Publish(new PlayerConnectedEvent(DateTimeOffset.UtcNow, PlayerSnapshot.From(player)));
+            var now = DateTimeOffset.UtcNow;
+            var snapshot = PlayerSnapshot.From(player);
+            if (_presence.ShouldAnnounceConnect(snapshot, now))
+            {
+                Publish(new PlayerConnectedEvent(now, snapshot));
+            }
         }
 
         return HookResult.Continue;
@@ -131,7 +142,12 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
             controller is null ? PlayerTeam.None : (PlayerTeam)(int)controller.Team,
             isBot);
 
-        Publish(new PlayerDisconnectedEvent(DateTimeOffset.UtcNow, player, DisconnectReasons.Describe(@event.Reason)));
+        var now = DateTimeOffset.UtcNow;
+        if (_presence.ShouldAnnounceDisconnect(player, @event.Reason, now))
+        {
+            Publish(new PlayerDisconnectedEvent(now, player, DisconnectReasons.Describe(@event.Reason)));
+        }
+
         return HookResult.Continue;
     }
 

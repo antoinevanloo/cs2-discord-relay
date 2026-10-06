@@ -31,6 +31,7 @@
 
 - 💬 **Chat relay**: global chat and team chat, with a distinct `[TEAM]` prefix and color.
 - 🟢 **Connections and disconnections**, with the reason (timed out, kicked, banned...) and an optional link to the player's Steam profile.
+- 🔁 **No map-change spam**: CS2 disconnects and reconnects every player on `changelevel`. These transient events are recognized and hidden, so only real arrivals and departures are announced.
 - 🗺️ **Map changes**.
 - 🎛️ **Every event type can be toggled** individually.
 - 🎨 **Two formats**: rich **embeds** with one color per event type, or compact **text** lines.
