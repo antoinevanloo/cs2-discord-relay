@@ -87,4 +87,15 @@ public sealed class EventFilterTests
 
         Assert.True(EventFilter.ShouldRelay(TestData.Chat(team: true), options));
     }
+
+    [Fact]
+    public void Test_messages_ignore_event_toggles()
+    {
+        var options = Defaults with
+        {
+            Events = new EventToggles { Chat = false, TeamChat = false, PlayerConnect = false, PlayerDisconnect = false, MapChange = false },
+        };
+
+        Assert.True(EventFilter.ShouldRelay(TestData.Test(), options));
+    }
 }

@@ -210,6 +210,17 @@ public sealed class WebhookDispatcherTests
     }
 
     [Fact]
+    public async Task Pending_count_tracks_the_queue()
+    {
+        await using var h = new DispatcherHarness();
+        h.Enqueue(3);
+
+        Assert.Equal(3, h.Dispatcher.PendingCount);
+        await h.RunToCompletionAsync();
+        Assert.Equal(0, h.Dispatcher.PendingCount);
+    }
+
+    [Fact]
     public async Task Never_logs_the_webhook_url_or_token()
     {
         await using var h = new DispatcherHarness(

@@ -20,4 +20,6 @@ internal static class TestData
         new(Now, player ?? Player(), reason);
 
     public static MapChangedEvent Map(string name = "de_dust2") => new(Now, name);
+
+    public static RelayTestEvent Test(string requestedBy = "Console") => new(Now, requestedBy);
 }

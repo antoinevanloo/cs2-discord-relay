@@ -31,3 +31,8 @@ public sealed record PlayerDisconnectedEvent(DateTimeOffset Timestamp, PlayerInf
 /// <param name="Timestamp">When the map started.</param>
 /// <param name="MapName">Technical map name, e.g. <c>de_dust2</c>.</param>
 public sealed record MapChangedEvent(DateTimeOffset Timestamp, string MapName) : RelayEvent(Timestamp);
+
+/// <summary>A test message requested by an admin to check the webhook. Never filtered.</summary>
+/// <param name="Timestamp">When the test was requested.</param>
+/// <param name="RequestedBy">Who requested it (a player name, or <c>Console</c>).</param>
+public sealed record RelayTestEvent(DateTimeOffset Timestamp, string RequestedBy) : RelayEvent(Timestamp);

@@ -72,6 +72,8 @@ public sealed class MessageFormatter
             $"🔴 **{Name(disconnected.Player)}** left the server{SteamIdSuffix(disconnected.Player)}{ReasonSuffix(disconnected.Reason)}",
         MapChangedEvent map =>
             $"🗺️ Map changed to **{DiscordMarkdown.Escape(map.MapName)}**",
+        RelayTestEvent test =>
+            $"✅ Discord relay is working. Test requested by **{Name(test.RequestedBy)}**.",
         _ => throw new ArgumentOutOfRangeException(nameof(relayEvent), relayEvent.GetType().Name, "Unsupported event type."),
     };
 
@@ -110,12 +112,21 @@ public sealed class MessageFormatter
             Color = _mapColor,
             Timestamp = map.Timestamp,
         },
+        RelayTestEvent test => new DiscordEmbed
+        {
+            Title = "✅ Discord relay is working",
+            Description = Description($"Chat and events from the server will appear in this channel.\nTest requested by **{Name(test.RequestedBy)}**."),
+            Color = _connectColor,
+            Timestamp = test.Timestamp,
+        },
         _ => throw new ArgumentOutOfRangeException(nameof(relayEvent), relayEvent.GetType().Name, "Unsupported event type."),
     };
 
-    private static string Name(PlayerInfo player)
+    private static string Name(PlayerInfo player) => Name(player.Name);
+
+    private static string Name(string rawName)
     {
-        var name = DiscordMarkdown.Escape(player.Name);
+        var name = DiscordMarkdown.Escape(rawName);
         return name.Length == 0 ? "unnamed" : DiscordMarkdown.Truncate(name, DiscordLimits.EmbedAuthorNameLength);
     }
 

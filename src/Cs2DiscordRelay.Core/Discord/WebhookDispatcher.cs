@@ -92,6 +92,9 @@ public sealed class WebhookDispatcher : IAsyncDisposable
     /// <summary><see langword="false"/> once Discord rejected the webhook (deleted or invalid).</summary>
     public bool IsEnabled => !_disabled;
 
+    /// <summary>Messages queued and not sent yet.</summary>
+    public int PendingCount => _queue.Reader.Count;
+
     /// <summary>Starts the background send loop. Calling it twice has no effect.</summary>
     public void Start()
     {

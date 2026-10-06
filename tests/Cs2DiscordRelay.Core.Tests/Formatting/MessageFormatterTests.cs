@@ -158,4 +158,21 @@ public sealed class MessageFormatterTests
     [Fact]
     public void Empty_names_are_replaced() =>
         Assert.Equal("💬 **unnamed**: hi", Text(TestData.Chat("hi", player: TestData.Player("​"))));
+
+    [Fact]
+    public void Text_test_message_names_the_requester() =>
+        Assert.Equal(
+            @"✅ Discord relay is working. Test requested by **\_admin\_**.",
+            Text(TestData.Test("_admin_")));
+
+    [Fact]
+    public void Embed_test_message_has_a_title_and_the_connect_color()
+    {
+        var embed = Embed(TestData.Test());
+
+        Assert.Equal("✅ Discord relay is working", embed.Title);
+        Assert.EndsWith("Test requested by **Console**.", embed.Description, StringComparison.Ordinal);
+        Assert.Equal(0x57F287, embed.Color);
+        Assert.Equal(TestData.Now, embed.Timestamp);
+    }
 }

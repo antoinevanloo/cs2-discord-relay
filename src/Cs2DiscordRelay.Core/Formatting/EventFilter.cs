@@ -6,7 +6,7 @@ namespace Cs2DiscordRelay.Core.Formatting;
 /// <summary>Decides whether an event should reach Discord, according to the options.</summary>
 public static class EventFilter
 {
-    /// <summary>Applies event toggles, the bot filter and the chat command filter.</summary>
+    /// <summary>Applies event toggles, the bot filter and the chat command filter. Test messages always pass.</summary>
     /// <param name="relayEvent">The event.</param>
     /// <param name="options">Normalized options.</param>
     /// <returns><see langword="true"/> when the event must be relayed.</returns>
@@ -23,6 +23,7 @@ public static class EventFilter
             PlayerConnectedEvent connected => options.Events.PlayerConnect && IsAllowedPlayer(connected.Player, options),
             PlayerDisconnectedEvent disconnected => options.Events.PlayerDisconnect && IsAllowedPlayer(disconnected.Player, options),
             MapChangedEvent map => options.Events.MapChange && !string.IsNullOrWhiteSpace(map.MapName),
+            RelayTestEvent => true,
             _ => false,
         };
     }
