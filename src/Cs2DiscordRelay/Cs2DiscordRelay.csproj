@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Cs2DiscordRelay</RootNamespace>
+    <AssemblyName>Cs2DiscordRelay</AssemblyName>
+    <Description>CounterStrikeSharp plugin relaying CS2 chat and server events to a Discord webhook.</Description>
+    <!--
+      Host assemblies (CounterStrikeSharp.API, Microsoft.Extensions.*) are provided by the server.
+      Do not copy NuGet assemblies into the output: the plugin folder only contains our own DLLs.
+    -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CounterStrikeSharp.API" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Cs2DiscordRelay.Core\Cs2DiscordRelay.Core.csproj" />
+  </ItemGroup>
+
+</Project>
