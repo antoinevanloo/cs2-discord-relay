@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Added
 - Relay of global and team chat (`[TEAM]` prefix), player connections and disconnections (with reason), and map changes to a Discord webhook.
 - Map-change reconnects (transient `player_disconnect` + reconnection) are not announced.
+- Admin commands `css_discordrelay_test` (sends a test message) and `css_discordrelay_status` (state of the relay), restricted to `@css/root` in game.
 - Embed or text formats, with a configurable color per event type.
 - Per-event toggles, chat command filter (`!`, `/`) and bot filter.
 - Non-blocking background queue with burst batching, Discord rate limit handling (429 `retry_after`, exhausted buckets) and exponential backoff.

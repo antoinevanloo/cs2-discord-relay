@@ -1,6 +1,9 @@
 using System.Reflection;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
+using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Modules.Admin;
+using CounterStrikeSharp.API.Modules.Commands;
 using Cs2DiscordRelay.Core;
 using Cs2DiscordRelay.Core.Discord;
 using Cs2DiscordRelay.Core.Events;
@@ -15,10 +18,15 @@ namespace Cs2DiscordRelay;
 public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConfig>
 {
     private const string ConfigPath = "addons/counterstrikesharp/configs/plugins/Cs2DiscordRelay/Cs2DiscordRelay.json";
+    private const string ReplyPrefix = "[Cs2DiscordRelay] ";
+
+    // The server console and RCON always pass this check (no calling player).
+    private const string AdminPermission = "@css/root";
 
     // Survives relay restarts (config reloads), so a reload never re-announces everyone.
     private readonly PresenceTracker _presence = new();
     private RelayService? _relay;
+    private string? _disabledReason;
 
     /// <summary>
     /// Same identifier as the folder, DLL and config file: <c>css_plugins reload</c> looks plugins up by
@@ -80,6 +88,7 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
 
         if (!WebhookUrl.TryParse(Config.WebhookUrl, out var url, out var error))
         {
+            _disabledReason = error;
             PluginLog.RelayDisabled(Logger, error, ConfigPath);
             return;
         }
@@ -87,6 +96,42 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
         _relay = new RelayService(url, options, Logger);
         PluginLog.RelayStarted(Logger, options.Format.ToString());
     }
+
+    /// <summary>Sends a test message, so admins can check the webhook without waiting for players.</summary>
+    /// <param name="caller">The admin who ran the command, or <see langword="null"/> for the server console.</param>
+    /// <param name="command">The command.</param>
+    [ConsoleCommand("css_discordrelay_test", "Sends a test message to the Discord webhook.")]
+    [RequiresPermissions(AdminPermission)]
+    public void OnTestCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        if (_relay is not { IsEnabled: true } relay)
+        {
+            command.ReplyToCommand(ReplyPrefix + DescribeStatus());
+            return;
+        }
+
+        var requestedBy = caller is { IsValid: true } ? caller.PlayerName : "Console";
+        command.ReplyToCommand(ReplyPrefix + (relay.Publish(new RelayTestEvent(DateTimeOffset.UtcNow, requestedBy))
+            ? "Test message queued. It should appear in Discord within a few seconds; delivery errors are written to the server log."
+            : "The relay is shutting down: test message not sent."));
+    }
+
+    /// <summary>Prints the state of the relay: running or not, format, relayed events, pending messages.</summary>
+    /// <param name="caller">The admin who ran the command, or <see langword="null"/> for the server console.</param>
+    /// <param name="command">The command.</param>
+    [ConsoleCommand("css_discordrelay_status", "Shows the state of the Discord relay.")]
+    [RequiresPermissions(AdminPermission)]
+    public void OnStatusCommand(CCSPlayerController? caller, CommandInfo command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        command.ReplyToCommand($"{ReplyPrefix}v{ModuleVersion}. {DescribeStatus()}");
+    }
+
+    private string DescribeStatus() =>
+        _relay?.DescribeStatus()
+        ?? $"Disabled: {_disabledReason} Set \"WebhookUrl\" in {ConfigPath}, then run: css_plugins reload Cs2DiscordRelay";
 
     private void OnPlayerChat(CCSPlayerController player, string message, bool teamChat)
     {

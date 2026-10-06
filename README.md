@@ -85,6 +85,11 @@
    css_plugins reload Cs2DiscordRelay
    ```
    The console should print `Discord relay started (Embed messages).`
+7. Check the webhook end to end:
+   ```text
+   css_discordrelay_test
+   ```
+   A "✅ Discord relay is working" message should appear in your channel within a few seconds.
 
 ## Configuration
 
@@ -137,6 +142,20 @@ The file is generated with these defaults. Comments (`//`) are allowed: CounterS
 
 After editing the file, run `css_plugins reload Cs2DiscordRelay`.
 
+## Admin commands
+
+Both commands work from the server console and RCON. In game, they require the `@css/root` permission (see [CounterStrikeSharp admin configuration](https://docs.cssharp.dev/docs/admin-framework/defining-admins.html)) and can be typed in chat as `!discordrelay_test` / `!discordrelay_status`.
+
+| Command | Description |
+|---|---|
+| `css_discordrelay_test` | Sends a test message to the webhook, bypassing the event toggles. Delivery errors are written to the server log. |
+| `css_discordrelay_status` | Prints the version and state of the relay: running or disabled (and why), format, relayed events, messages waiting to be sent. |
+
+```text
+] css_discordrelay_status
+[Cs2DiscordRelay] v1.0.0. Running: Embed format, relaying chat, team chat, connections, disconnections, map changes. 0 message(s) waiting to be sent.
+```
+
 ## Creating a Discord webhook
 
 1. In Discord, open **Server Settings → Integrations → Webhooks**. You need the *Manage Webhooks* permission.
@@ -147,6 +166,9 @@ After editing the file, run `css_plugins reload Cs2DiscordRelay`.
 > Anyone who has the webhook URL can post in your channel. Do not commit it or share it. If it leaks, delete the webhook in Discord and create a new one.
 
 ## Troubleshooting
+
+> [!TIP]
+> Start with `css_discordrelay_status`: it tells you whether the relay is running and, if not, why.
 
 <details>
 <summary><b>The plugin does not load</b></summary>
@@ -195,6 +217,8 @@ This is usually caused by a filter:
 - chat commands (`IgnoreCommands`, `CommandPrefixes`);
 - bots (`IgnoreBots`);
 - an event turned off in `Events`.
+
+`css_discordrelay_test` bypasses every filter: if the test message arrives but chat does not, check the filters above.
 
 Only messages typed by players are relayed. Messages sent from the server console are not.
 
