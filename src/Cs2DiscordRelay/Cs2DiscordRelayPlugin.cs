@@ -1,0 +1,148 @@
+using System.Reflection;
+using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Core.Attributes;
+using Cs2DiscordRelay.Core;
+using Cs2DiscordRelay.Core.Discord;
+using Cs2DiscordRelay.Core.Events;
+
+namespace Cs2DiscordRelay;
+
+/// <summary>
+/// CounterStrikeSharp entry point. This layer only copies game data into plain events;
+/// filtering, formatting and sending live in <c>Cs2DiscordRelay.Core</c>.
+/// </summary>
+[MinimumApiVersion(333)] // Listeners.OnPlayerChat
+public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConfig>
+{
+    private const string ConfigPath = "addons/counterstrikesharp/configs/plugins/Cs2DiscordRelay/Cs2DiscordRelay.json";
+
+    private RelayService? _relay;
+
+    /// <inheritdoc />
+    public override string ModuleName => "CS2 Discord Relay";
+
+    /// <inheritdoc />
+    public override string ModuleVersion { get; } =
+        typeof(Cs2DiscordRelayPlugin).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]
+        ?? "1.0.0";
+
+    /// <inheritdoc />
+    public override string ModuleAuthor => "LinKeD";
+
+    /// <inheritdoc />
+    public override string ModuleDescription => "Relays chat, connections and map changes to a Discord webhook.";
+
+    /// <inheritdoc />
+    public PluginConfig Config { get; set; } = new();
+
+    /// <inheritdoc />
+    public void OnConfigParsed(PluginConfig config) => Config = config;
+
+    /// <inheritdoc />
+    public override void Load(bool hotReload)
+    {
+        StartRelay();
+
+        RegisterListener<Listeners.OnPlayerChat>(OnPlayerChat);
+        RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        RegisterEventHandler<EventPlayerConnectFull>(OnPlayerConnectFull);
+        RegisterEventHandler<EventPlayerDisconnect>(OnPlayerDisconnect);
+    }
+
+    /// <inheritdoc />
+    public override void Unload(bool hotReload)
+    {
+        var relay = _relay;
+        _relay = null;
+        if (relay is null)
+        {
+            return;
+        }
+
+        // Flush in the background: never block the game thread on network I/O.
+        _ = Task.Run(async () => await relay.DisposeAsync().ConfigureAwait(false));
+    }
+
+    private void StartRelay()
+    {
+        var warnings = new List<string>();
+        var options = Config.ToRelayOptions(warnings);
+        foreach (var warning in warnings)
+        {
+            PluginLog.ConfigWarning(Logger, warning);
+        }
+
+        if (!WebhookUrl.TryParse(Config.WebhookUrl, out var url, out var error))
+        {
+            PluginLog.RelayDisabled(Logger, error, ConfigPath);
+            return;
+        }
+
+        _relay = new RelayService(url, options, Logger);
+        PluginLog.RelayStarted(Logger, options.Format.ToString());
+    }
+
+    private void OnPlayerChat(CCSPlayerController player, string message, bool teamChat)
+    {
+        if (_relay is null || player is null || !player.IsValid || player.IsHLTV)
+        {
+            return;
+        }
+
+        Publish(new ChatMessageEvent(DateTimeOffset.UtcNow, PlayerSnapshot.From(player), message, teamChat));
+    }
+
+    private void OnMapStart(string mapName) =>
+        Publish(new MapChangedEvent(DateTimeOffset.UtcNow, mapName));
+
+    private HookResult OnPlayerConnectFull(EventPlayerConnectFull @event, GameEventInfo info)
+    {
+        var player = @event.Userid;
+        if (_relay is not null && player is { IsValid: true, IsHLTV: false })
+        {
+            Publish(new PlayerConnectedEvent(DateTimeOffset.UtcNow, PlayerSnapshot.From(player)));
+        }
+
+        return HookResult.Continue;
+    }
+
+    private HookResult OnPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
+    {
+        // Players who never finished connecting were never announced: stay silent for them too.
+        if (_relay is null || !@event.EverFullyConnected)
+        {
+            return HookResult.Continue;
+        }
+
+        // The controller may already be invalid here: rely on the event's own fields first.
+        var controller = @event.Userid is { IsValid: true } valid ? valid : null;
+        if (controller?.IsHLTV == true)
+        {
+            return HookResult.Continue;
+        }
+
+        var isBot = controller?.IsBot ?? string.Equals(@event.Networkid, "BOT", StringComparison.OrdinalIgnoreCase);
+        var player = new PlayerInfo(
+            @event.Name ?? controller?.PlayerName ?? string.Empty,
+            isBot ? 0 : @event.Xuid,
+            controller is null ? PlayerTeam.None : (PlayerTeam)(int)controller.Team,
+            isBot);
+
+        Publish(new PlayerDisconnectedEvent(DateTimeOffset.UtcNow, player, DisconnectReasons.Describe(@event.Reason)));
+        return HookResult.Continue;
+    }
+
+    private void Publish(RelayEvent relayEvent)
+    {
+        try
+        {
+            _relay?.Publish(relayEvent);
+        }
+#pragma warning disable CA1031 // Never let the relay break a game callback.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            PluginLog.PublishFailed(Logger, relayEvent.GetType().Name, ex.Message);
+        }
+    }
+}

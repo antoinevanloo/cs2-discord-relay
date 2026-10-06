@@ -7,6 +7,7 @@
     <PackageVersion Include="CounterStrikeSharp.API" Version="1.0.376" />
     <!-- Matches the version CounterStrikeSharp 1.0.376 ships, so the host copy is the one resolved at runtime. -->
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
 
     <!-- Tests -->
     <PackageVersion Include="xunit.v3" Version="4.0.1" />

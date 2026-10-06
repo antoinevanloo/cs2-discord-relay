@@ -9,10 +9,15 @@
       Do not copy NuGet assemblies into the output: the plugin folder only contains our own DLLs.
     -->
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <PublishDocumentationFile>false</PublishDocumentationFile>
+    <PublishReferencesDocumentationFiles>false</PublishReferencesDocumentationFiles>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="CounterStrikeSharp.API" ExcludeAssets="runtime" PrivateAssets="all" />
+    <!-- Pulled in by Cs2DiscordRelay.Core, also provided by the host: shipping a second copy could split ILogger type identity. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
