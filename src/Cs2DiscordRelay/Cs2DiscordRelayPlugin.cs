@@ -18,8 +18,11 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
 
     private RelayService? _relay;
 
-    /// <inheritdoc />
-    public override string ModuleName => "CS2 Discord Relay";
+    /// <summary>
+    /// Same identifier as the folder, DLL and config file: <c>css_plugins reload</c> looks plugins up by
+    /// <c>ModuleName</c>, so <c>css_plugins reload Cs2DiscordRelay</c> works as documented.
+    /// </summary>
+    public override string ModuleName => "Cs2DiscordRelay";
 
     /// <inheritdoc />
     public override string ModuleVersion { get; } =
