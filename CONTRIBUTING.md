@@ -20,6 +20,15 @@ dotnet test  -c Release
 dotnet publish src/Cs2DiscordRelay -c Release -o out/Cs2DiscordRelay   # folder to copy to a test server
 ```
 
+### Checking the rendering on a real webhook
+
+The `Category=Live` tests post a showcase sequence to a real Discord webhook. They are skipped unless `DISCORD_WEBHOOK_URL` is set (see [docs/images/README.md](docs/images/README.md)):
+
+```bash
+DISCORD_WEBHOOK_URL='https://discord.com/api/webhooks/...' \
+  dotnet test -c Release --project tests/Cs2DiscordRelay.Core.Tests -- --filter-trait "Category=Live"
+```
+
 ## Project layout
 
 | Path | Role |
