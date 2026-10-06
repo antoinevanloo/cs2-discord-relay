@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      test-dependencies:
+        patterns: ["xunit*", "Microsoft.Extensions.TimeProvider.Testing"]
+    ignore:
+      # Must match the versions shipped by CounterStrikeSharp; bump together with CounterStrikeSharp.API.
+      - dependency-name: "Microsoft.Extensions.Logging.Abstractions"
+      - dependency-name: "Microsoft.Extensions.DependencyInjection.Abstractions"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
