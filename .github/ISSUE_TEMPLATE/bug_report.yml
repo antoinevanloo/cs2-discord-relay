@@ -1,0 +1,67 @@
+name: Bug report
+description: Something does not work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+        > [!WARNING]
+        > **Never paste your webhook URL.** Anyone who has it can post to your channel. Replace it with `***` in configs and logs.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Set "MessageFormat" to "Text"
+        2. Type "hello" in team chat
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Shown by `css_discordrelay_status`.
+      placeholder: v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: css-version
+    attributes:
+      label: CounterStrikeSharp version
+      description: Shown by `css_plugins list` or at the top of the CounterStrikeSharp log.
+      placeholder: v1.0.376
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Server OS
+      options: [Linux, Windows, Docker]
+    validations:
+      required: true
+  - type: textarea
+    id: status
+    attributes:
+      label: Output of css_discordrelay_status
+      render: text
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Content of `configs/plugins/Cs2DiscordRelay/Cs2DiscordRelay.json`, **with `WebhookUrl` removed**.
+      render: jsonc
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines
+      description: From the server console or `addons/counterstrikesharp/logs/`.
+      render: text

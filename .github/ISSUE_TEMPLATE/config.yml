@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security issue
+    url: https://github.com/antoinevanloo/cs2-discord-relay/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue.
+  - name: Need a custom plugin?
+    url: https://github.com/antoinevanloo/cs2-discord-relay#need-a-custom-plugin
+    about: Custom CounterStrikeSharp plugins and paid features.

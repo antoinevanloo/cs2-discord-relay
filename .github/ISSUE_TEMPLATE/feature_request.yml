@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an idea or an improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Please check the [roadmap](https://github.com/antoinevanloo/cs2-discord-relay#roadmap) first, your idea may already be planned.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would it solve?
+      description: "Describe your use case: what you run, what you are trying to achieve."
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How you would like it to work (configuration, Discord rendering...).
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

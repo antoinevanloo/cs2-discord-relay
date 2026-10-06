@@ -261,6 +261,8 @@ dotnet test  -c Release
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `ci:`...).
 
+Found a security issue (mention bypass, webhook URL leak...)? Please report it privately, see [SECURITY.md](SECURITY.md).
+
 ## License
 
 [MIT](LICENSE) © LinKeD
