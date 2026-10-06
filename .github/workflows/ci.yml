@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      # TreatWarningsAsErrors is set in Directory.Build.props: any warning fails the build.
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+      - name: Publish plugin
+        run: dotnet publish src/Cs2DiscordRelay -c Release --no-build -o artifacts/Cs2DiscordRelay
+
+      - name: Upload plugin build
+        uses: actions/upload-artifact@v7
+        with:
+          name: Cs2DiscordRelay-${{ github.sha }}
+          path: artifacts/
+          retention-days: 14
