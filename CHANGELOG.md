@@ -5,7 +5,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-10-10
+## [1.1.0] - 2026-10-10
 
 ### Added
 - Optional Discord → game chat relay through a Discord bot (`DiscordToGame` config section, off by default): reads the webhook's channel by default, converts mentions, emojis, timestamps and markdown to plain text, strips CS2 color codes, ignores bots and webhooks (no echo), supports allowed roles, and rate limits what reaches the game. Built on a hand-written gateway client (heartbeat, resume, reconnect) with no new dependency.
@@ -16,7 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - `ConfigVersion` is now 2. Version 1 files keep loading unchanged.
 - HTTP requests use the `DiscordBot (url, version)` User-Agent required by Discord.
 
-## [1.0.0] - Unreleased
+## [1.0.0] - 2026-10-10
 
 ### Added
 - Relay of global and team chat (`[TEAM]` prefix), player connections and disconnections (with reason), and map changes to a Discord webhook.
@@ -28,5 +28,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 - Mention neutralization (`allowed_mentions` always empty), markdown escaping, and redaction of the webhook URL in logs.
 - CI (build and test on every push or PR) and a release workflow producing a ready-to-install zip.
 
-[Unreleased]: https://github.com/antoinevanloo/cs2-discord-relay/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/antoinevanloo/cs2-discord-relay/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/antoinevanloo/cs2-discord-relay/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/antoinevanloo/cs2-discord-relay/releases/tag/v1.0.0

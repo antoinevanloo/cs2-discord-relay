@@ -57,7 +57,7 @@
 | Counter-Strike 2 dedicated server | Linux or Windows |
 | [Metamod:Source](https://www.sourcemm.net/downloads.php?branch=dev) | 2.x (dev builds) |
 | [CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp/releases) | **API v1.0.333 or newer** (uses the `OnPlayerChat` listener). Built against **v1.0.376**, which runs on .NET 10 |
-| **Tested with** | CounterStrikeSharp **v1.0.376** on a native **Windows** dedicated server: global and team chat, connections and disconnections, map changes (no reconnect spam), admin commands |
+| **Tested with** | CounterStrikeSharp **v1.0.376** on a native **Windows** dedicated server: global and team chat, connections and disconnections, map changes (no reconnect spam), admin commands, Discord → game chat through a bot |
 
 > [!TIP]
 > Install the CounterStrikeSharp build **with runtime** unless your server already ships the .NET runtime.
