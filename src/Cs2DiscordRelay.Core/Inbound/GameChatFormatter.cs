@@ -10,6 +10,28 @@ namespace Cs2DiscordRelay.Core.Inbound;
 /// <param name="Message">Message text.</param>
 public sealed record GameChatLine(string Name, string Message);
 
+/// <summary>Renders <see cref="GameChatLine"/>s with the configured <c>GameChatFormat</c>.</summary>
+public static partial class GameChatTemplate
+{
+    /// <summary>
+    /// Fills <c>{Name}</c> and <c>{Message}</c> in one pass, so a name containing <c>{Message}</c> is never expanded.
+    /// Replace color tags in <paramref name="template"/> first: the inserted text is never interpreted.
+    /// </summary>
+    /// <param name="template">Format with color tags already replaced.</param>
+    /// <param name="line">The line.</param>
+    /// <returns>The chat line.</returns>
+    public static string Render(string template, GameChatLine line)
+    {
+        ArgumentNullException.ThrowIfNull(template);
+        ArgumentNullException.ThrowIfNull(line);
+        return Placeholder().Replace(template, match =>
+            match.Value.Equals("{Name}", StringComparison.OrdinalIgnoreCase) ? line.Name : line.Message);
+    }
+
+    [GeneratedRegex(@"\{(?:Name|Message)\}", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+    private static partial Regex Placeholder();
+}
+
 /// <summary>Turns Discord markup into plain text safe for the CS2 chat.</summary>
 /// <remarks>
 /// CS2 uses control characters (<c>\x01</c>–<c>\x10</c>) as color codes, so they are always stripped from
@@ -37,14 +59,6 @@ internal static partial class GameChatFormatter
             DiscordMarkdown.Truncate(name.Length == 0 ? "unknown" : name, InboundOptions.MaxNameLength),
             DiscordMarkdown.Truncate(text, options.MaxMessageLength));
     }
-
-    /// <summary>
-    /// Fills <c>{Name}</c> and <c>{Message}</c> in one pass, so a name containing <c>{Message}</c> is never expanded.
-    /// Color tags must already be replaced: the inserted text is never interpreted.
-    /// </summary>
-    public static string Render(string template, GameChatLine line) =>
-        Placeholder().Replace(template, match =>
-            match.Value.Equals("{Name}", StringComparison.OrdinalIgnoreCase) ? line.Name : line.Message);
 
     internal static string ToPlainText(string content, IReadOnlyDictionary<ulong, string> mentionNames)
     {
@@ -92,9 +106,6 @@ internal static partial class GameChatFormatter
             }
         }
     }
-
-    [GeneratedRegex(@"\{(?:Name|Message)\}", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
-    private static partial Regex Placeholder();
 
     [GeneratedRegex(@"```(?:[A-Za-z0-9+#-]*\n)?(?<code>[\s\S]*?)```", RegexOptions.CultureInvariant)]
     private static partial Regex CodeBlock();

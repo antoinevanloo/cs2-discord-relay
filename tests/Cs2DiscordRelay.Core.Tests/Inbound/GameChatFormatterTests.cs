@@ -73,7 +73,7 @@ public sealed class GameChatFormatterTests
     [Fact]
     public void Render_fills_placeholders_once()
     {
-        var rendered = GameChatFormatter.Render("[D] {name}: {MESSAGE}", new GameChatLine("{Message}", "{Name} {Red}"));
+        var rendered = GameChatTemplate.Render("[D] {name}: {MESSAGE}", new GameChatLine("{Message}", "{Name} {Red}"));
 
         Assert.Equal("[D] {Message}: {Name} {Red}", rendered);
     }
