@@ -31,4 +31,19 @@ internal static partial class Log
 
     [LoggerMessage(9, LogLevel.Warning, "Shutting down with {Count} message(s) still queued, they were not sent.")]
     public static partial void UnsentOnShutdown(ILogger logger, int count);
+
+    [LoggerMessage(20, LogLevel.Information, "Discord gateway connected as {BotName}.")]
+    public static partial void GatewayConnected(ILogger logger, string botName);
+
+    [LoggerMessage(21, LogLevel.Debug, "Discord gateway session resumed.")]
+    public static partial void GatewayResumed(ILogger logger);
+
+    [LoggerMessage(22, LogLevel.Information, "Discord gateway disconnected ({Reason}), reconnecting in {DelayMs} ms.")]
+    public static partial void GatewayReconnecting(ILogger logger, string reason, double delayMs);
+
+    [LoggerMessage(23, LogLevel.Error, "Discord gateway stopped: {Reason} Discord to game relay disabled until the plugin is reloaded.")]
+    public static partial void GatewayStopped(ILogger logger, string reason);
+
+    [LoggerMessage(24, LogLevel.Error, "Could not handle a Discord message ({ErrorType}: {Error}).")]
+    public static partial void GatewayHandlerFailed(ILogger logger, string errorType, string error);
 }

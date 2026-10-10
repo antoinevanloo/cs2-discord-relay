@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Cs2DiscordRelay.Core.Discord.Gateway;
 
 namespace Cs2DiscordRelay.Core.Discord;
 

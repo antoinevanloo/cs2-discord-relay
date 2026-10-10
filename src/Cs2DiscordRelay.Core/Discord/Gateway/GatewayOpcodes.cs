@@ -1,4 +1,4 @@
-namespace Cs2DiscordRelay.Core.Discord;
+namespace Cs2DiscordRelay.Core.Discord.Gateway;
 
 /// <summary>Gateway opcodes used by the bridge (https://discord.com/developers/docs/topics/opcodes-and-status-codes).</summary>
 internal static class GatewayOpcodes
