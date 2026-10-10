@@ -10,6 +10,13 @@ namespace Cs2DiscordRelay;
 /// </summary>
 public sealed class PluginConfig : BasePluginConfig
 {
+    /// <summary>Version of this file's layout. 2 added <see cref="DiscordToGame"/>.</summary>
+    public const int CurrentVersion = 2;
+
+    /// <inheritdoc />
+    [JsonPropertyName("ConfigVersion")]
+    public override int Version { get; set; } = CurrentVersion;
+
     /// <summary>Discord webhook URL (secret). The relay stays idle while it is empty.</summary>
     public string WebhookUrl { get; set; } = string.Empty;
 
@@ -46,6 +53,9 @@ public sealed class PluginConfig : BasePluginConfig
 
     /// <summary>Maximum pending messages before the oldest are dropped.</summary>
     public int MaxQueueSize { get; set; } = 500;
+
+    /// <summary>Optional Discord → game relay.</summary>
+    public DiscordToGameConfig DiscordToGame { get; set; } = new();
 
     /// <summary>Maps the JSON settings to normalized core options.</summary>
     /// <param name="warnings">Receives one message per corrected value.</param>

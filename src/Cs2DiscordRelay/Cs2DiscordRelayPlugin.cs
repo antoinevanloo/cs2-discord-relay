@@ -1,12 +1,16 @@
 using System.Reflection;
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
+using CounterStrikeSharp.API.Core.Translations;
 using CounterStrikeSharp.API.Modules.Admin;
 using CounterStrikeSharp.API.Modules.Commands;
+using CounterStrikeSharp.API.Modules.Timers;
 using Cs2DiscordRelay.Core;
 using Cs2DiscordRelay.Core.Discord;
 using Cs2DiscordRelay.Core.Events;
+using Cs2DiscordRelay.Core.Inbound;
 
 namespace Cs2DiscordRelay;
 
@@ -25,8 +29,14 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
 
     // Survives relay restarts (config reloads), so a reload never re-announces everyone.
     private readonly PresenceTracker _presence = new();
+    private const float DiscordDrainIntervalSeconds = 0.5f;
+
+    private readonly List<GameChatLine> _discordLines = [];
     private RelayService? _relay;
     private string? _disabledReason;
+    private DiscordBridgeService? _bridge;
+    private string _bridgeDisabledReason = "Disabled (DiscordToGame.Enabled is false).";
+    private string _gameChatTemplate = InboundOptions.DefaultGameChatFormat;
 
     /// <summary>
     /// Same identifier as the folder, DLL and config file: <c>css_plugins reload</c> looks plugins up by
@@ -54,7 +64,13 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
     /// <inheritdoc />
     public override void Load(bool hotReload)
     {
+        if (Config.Version < PluginConfig.CurrentVersion)
+        {
+            PluginLog.ConfigOutdated(Logger, Config.Version, PluginConfig.CurrentVersion);
+        }
+
         StartRelay();
+        StartBridge();
 
         RegisterListener<Listeners.OnPlayerChat>(OnPlayerChat);
         RegisterListener<Listeners.OnMapStart>(OnMapStart);
@@ -66,15 +82,20 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
     /// <inheritdoc />
     public override void Unload(bool hotReload)
     {
+        // Flush and disconnect in the background: never block the game thread on network I/O.
         var relay = _relay;
         _relay = null;
-        if (relay is null)
+        if (relay is not null)
         {
-            return;
+            _ = Task.Run(async () => await relay.DisposeAsync().ConfigureAwait(false));
         }
 
-        // Flush in the background: never block the game thread on network I/O.
-        _ = Task.Run(async () => await relay.DisposeAsync().ConfigureAwait(false));
+        var bridge = _bridge;
+        _bridge = null;
+        if (bridge is not null)
+        {
+            _ = Task.Run(async () => await bridge.DisposeAsync().ConfigureAwait(false));
+        }
     }
 
     private void StartRelay()
@@ -95,6 +116,68 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
 
         _relay = new RelayService(url, options, Logger);
         PluginLog.RelayStarted(Logger, options.Format.ToString());
+    }
+
+    private void StartBridge()
+    {
+        var config = Config.DiscordToGame ?? new DiscordToGameConfig();
+        if (!config.Enabled)
+        {
+            return;
+        }
+
+        var warnings = new List<string>();
+        var options = config.ToInboundOptions(warnings);
+        foreach (var warning in warnings)
+        {
+            PluginLog.ConfigWarning(Logger, warning);
+        }
+
+        if (!BotToken.TryParse(config.BotToken, out var token, out var error))
+        {
+            _bridgeDisabledReason = "Disabled: " + error;
+            PluginLog.BridgeDisabled(Logger, error, ConfigPath);
+            return;
+        }
+
+        // The webhook is optional here: it only tells which channel to read when ChannelId is empty.
+        var webhook = WebhookUrl.TryParse(Config.WebhookUrl, out var url, out _) ? url : null;
+
+        _gameChatTemplate = options.GameChatFormat.ReplaceColorTags();
+        _bridge = new DiscordBridgeService(token, options, webhook, Logger);
+        _bridge.Start();
+
+        // Timers run on the game thread, the only place where chat can be printed. They pause while the
+        // server hibernates; the bridge discards what waited too long.
+        AddTimer(DiscordDrainIntervalSeconds, ShowDiscordMessages, TimerFlags.REPEAT);
+    }
+
+    private void ShowDiscordMessages()
+    {
+        if (_bridge is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _discordLines.Clear();
+            if (_bridge.Drain(_discordLines) == 0 || !Utilities.GetPlayers().Exists(p => !p.IsBot && !p.IsHLTV))
+            {
+                return;
+            }
+
+            foreach (var line in _discordLines)
+            {
+                Server.PrintToChatAll(GameChatTemplate.Render(_gameChatTemplate, line));
+            }
+        }
+#pragma warning disable CA1031 // Never let the relay break a game callback.
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            PluginLog.BridgeDrainFailed(Logger, ex.Message);
+        }
     }
 
     /// <summary>Sends a test message, so admins can check the webhook without waiting for players.</summary>
@@ -118,7 +201,7 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
             : "The relay is shutting down: test message not sent."));
     }
 
-    /// <summary>Prints the state of the relay: running or not, format, relayed events, pending messages.</summary>
+    /// <summary>Prints the state of both directions: running or not (and why), format, relayed events, pending messages.</summary>
     /// <param name="caller">The admin who ran the command, or <see langword="null"/> for the server console.</param>
     /// <param name="command">The command.</param>
     [ConsoleCommand("css_discordrelay_status", "Shows the state of the Discord relay.")]
@@ -126,7 +209,8 @@ public sealed class Cs2DiscordRelayPlugin : BasePlugin, IPluginConfig<PluginConf
     public void OnStatusCommand(CCSPlayerController? caller, CommandInfo command)
     {
         ArgumentNullException.ThrowIfNull(command);
-        command.ReplyToCommand($"{ReplyPrefix}v{ModuleVersion}. {DescribeStatus()}");
+        command.ReplyToCommand($"{ReplyPrefix}v{ModuleVersion}. Game to Discord: {DescribeStatus()}");
+        command.ReplyToCommand($"{ReplyPrefix}Discord to game: {_bridge?.DescribeStatus() ?? _bridgeDisabledReason}");
     }
 
     private string DescribeStatus() =>
