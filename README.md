@@ -2,7 +2,7 @@
 
 # CS2 Discord Relay
 
-**Stream your Counter-Strike 2 server's chat and events to a Discord channel. Lightweight, rate-limit aware, safe by default.**
+**Stream your Counter-Strike 2 server's chat and events to a Discord channel, and optionally bring Discord messages back into the game. Lightweight, rate-limit aware, safe by default.**
 
 [![CI](https://github.com/antoinevanloo/cs2-discord-relay/actions/workflows/ci.yml/badge.svg)](https://github.com/antoinevanloo/cs2-discord-relay/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/antoinevanloo/cs2-discord-relay?include_prereleases&sort=semver)](https://github.com/antoinevanloo/cs2-discord-relay/releases)
@@ -33,6 +33,7 @@
 - 🟢 **Connections and disconnections**, with the reason (timed out, kicked, banned...) and an optional link to the player's Steam profile.
 - 🔁 **No map-change spam**: CS2 disconnects and reconnects every player on `changelevel`. These transient events are recognized and hidden, so only real arrivals and departures are announced.
 - 🗺️ **Map changes**.
+- 🔄 **Optional Discord → game chat**: with a Discord bot, messages written in the channel appear in the game chat (`[Discord] Nova: gg`). Mentions, emojis and markdown become plain text, CS2 color codes are stripped, and a rate limit keeps the chat readable. [Setup guide](docs/discord-bot-setup.md).
 - 🎛️ **Every event type can be toggled** individually.
 - 🎨 **Two formats**: rich **embeds** with one color per event type, or compact **text** lines.
 - 🚫 **Command filter**: chat commands such as `!rtv` or `/ws` are not relayed (prefixes are configurable).
@@ -121,7 +122,17 @@ The file is generated with these defaults. Comments (`//`) are allowed: CounterS
   "WebhookAvatarUrl": "",           // overrides the webhook avatar, empty = avatar set in Discord
   "BatchWindowMs": 1000,            // wait this long to group bursts into one message, 0 = send immediately
   "MaxQueueSize": 500,              // pending messages kept while Discord is slow, oldest dropped first
-  "ConfigVersion": 1                // managed by CounterStrikeSharp, do not change
+  "DiscordToGame": {                // optional, needs a Discord bot: see docs/discord-bot-setup.md
+    "Enabled": false,
+    "BotToken": "",                 // bot token. Keep it secret!
+    "ChannelId": "",                // channel to read, empty = the WebhookUrl channel
+    "AllowedRoleIds": [],           // empty = anyone who can write in the channel
+    "GameChatFormat": "{LightBlue}[Discord]{Default} {Green}{Name}{Default}: {Message}",
+    "MaxMessageLength": 200,
+    "MaxMessagesPer10Seconds": 5,
+    "UserCooldownSeconds": 2
+  },
+  "ConfigVersion": 2                // managed by CounterStrikeSharp, do not change
 }
 ```
 
@@ -140,6 +151,23 @@ The file is generated with these defaults. Comments (`//`) are allowed: CounterS
 | `BatchWindowMs` | int | `1000` | Grouping window for bursts, between `0` and `10000`. Higher values mean fewer requests but more latency. |
 | `MaxQueueSize` | int | `500` | Queue capacity, between `10` and `10000`. When Discord cannot keep up, the oldest messages are dropped and a warning is logged at most every 30 s. |
 
+### Discord → game chat (optional)
+
+Off by default. It needs a Discord bot with the **Message Content Intent**: follow the [setup guide](docs/discord-bot-setup.md), about five minutes.
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `DiscordToGame.Enabled` | bool | `false` | Turns the Discord → game relay on. |
+| `DiscordToGame.BotToken` | string | `""` | Bot token from **Developer Portal → Bot → Reset Token**. Never logged. |
+| `DiscordToGame.ChannelId` | string | `""` | ID of the channel (or thread) to read. Empty reads the channel of `WebhookUrl`, which makes it a two-way chat; the relay's own posts are never sent back. |
+| `DiscordToGame.AllowedRoleIds` | string[] | `[]` | When set, only members with one of these roles reach the game chat. |
+| `DiscordToGame.GameChatFormat` | string | see above | In-game line. Color tags are CounterStrikeSharp's (`{Green}`, `{LightBlue}`, `{Gold}`...); `{Name}` and `{Message}` are replaced by the author and the text, which are never interpreted. |
+| `DiscordToGame.MaxMessageLength` | int | `200` | Longer messages are truncated, between `20` and `400`. |
+| `DiscordToGame.MaxMessagesPer10Seconds` | int | `5` | Messages shown in game per 10 seconds, all authors together, between `1` and `50`. |
+| `DiscordToGame.UserCooldownSeconds` | int | `2` | Minimum delay between two messages of the same author, between `0` and `60`. |
+
+Messages are shown only while a human player is connected, and messages older than 30 seconds are dropped. Configuration files from v1.0 (`"ConfigVersion": 1`) keep working: add the `DiscordToGame` section to use it.
+
 After editing the file, run `css_plugins reload Cs2DiscordRelay`.
 
 ## Admin commands
@@ -149,11 +177,12 @@ Both commands work from the server console and RCON. In game, they require the `
 | Command | Description |
 |---|---|
 | `css_discordrelay_test` | Sends a test message to the webhook, bypassing the event toggles. Delivery errors are written to the server log. |
-| `css_discordrelay_status` | Prints the version and state of the relay: running or disabled (and why), format, relayed events, messages waiting to be sent. |
+| `css_discordrelay_status` | Prints the version and the state of both directions: running or disabled (and why), format, relayed events, messages waiting to be sent, and the Discord bot connection. |
 
 ```text
 ] css_discordrelay_status
-[Cs2DiscordRelay] v1.0.0. Running: Embed format, relaying chat, team chat, connections, disconnections, map changes. 0 message(s) waiting to be sent.
+[Cs2DiscordRelay] v1.1.0. Game to Discord: Running: Embed format, relaying chat, team chat, connections, disconnections, map changes. 0 message(s) waiting to be sent.
+[Cs2DiscordRelay] Discord to game: Connected as CS2 Relay, reading #cs2-chat.
 ```
 
 ## Creating a Discord webhook
@@ -211,6 +240,37 @@ Discord limits each webhook to a few requests per second. The plugin already gro
 </details>
 
 <details>
+<summary><b>Discord to game: "close code 4014" / "Message Content Intent is not enabled"</b></summary>
+
+In the [Developer Portal](https://discord.com/developers/applications), open your application → **Bot** → **Privileged Gateway Intents**, turn on **Message Content Intent** and save. Then run `css_plugins reload Cs2DiscordRelay`.
+
+</details>
+
+<details>
+<summary><b>Discord to game: "Discord rejected DiscordToGame.BotToken (HTTP 401)" / "close code 4004"</b></summary>
+
+The token is wrong or was reset. Click **Reset Token** in the **Bot** tab, paste the new token into `DiscordToGame.BotToken` and reload the plugin. The token is not the application ID nor the client secret.
+
+</details>
+
+<details>
+<summary><b>Discord to game: "The bot cannot see channel ..."</b></summary>
+
+The bot is not on the server, or the channel is private. [Invite the bot](docs/discord-bot-setup.md#3-invite-the-bot-to-your-server), then give it **View Channel** in the channel permissions. If `ChannelId` is set, check it is the channel ID (Developer Mode → right-click → **Copy Channel ID**), not the server ID.
+
+</details>
+
+<details>
+<summary><b>Discord to game: connected, but nothing shows up in game</b></summary>
+
+- Messages are shown only while at least one human player is connected.
+- Messages from bots and webhooks are ignored on purpose.
+- With `AllowedRoleIds` set, the author needs one of these roles.
+- Busy channels hit the rate limit (`MaxMessagesPer10Seconds`, `UserCooldownSeconds`); the server log says when messages were skipped.
+
+</details>
+
+<details>
 <summary><b>Some messages are not relayed</b></summary>
 
 This is usually caused by a filter:
@@ -235,17 +295,22 @@ Only messages typed by players are relayed. Messages sent from the server consol
                                      └─▶ bounded queue (non-blocking) ─▶ batch ─▶ POST webhook
                                                                          ▲          │
                                                                          └─ 429 / 5xx: wait & retry
+
+ Optional Discord → game direction:
+
+ timer (every 0.5 s) ◀── bounded, time-stamped queue ◀── rate limit ◀── plain text ◀── filter ◀── gateway (WebSocket, bot)
+   └─ PrintToChatAll, only when a human player is connected                   (no bots, no webhooks: no echo)
 ```
 
-- `src/Cs2DiscordRelay`: thin CounterStrikeSharp layer (events, config).
-- `src/Cs2DiscordRelay.Core`: formatting, escaping, batching and rate limiting. It does not depend on the game, which keeps it fully unit-tested.
-- `tests/`: xUnit v3 test suites (formatting, markdown escaping, queue and retry logic, config shape).
+- `src/Cs2DiscordRelay`: thin CounterStrikeSharp layer (events, config, admin commands, chat printing on the game thread).
+- `src/Cs2DiscordRelay.Core`: formatting, escaping, batching, rate limiting, and a hand-written Discord gateway client (heartbeat, resume, reconnect) with no third-party dependency. It does not depend on the game, which keeps it fully unit-tested.
+- `tests/`: xUnit v3 test suites (formatting, markdown escaping, queue and retry logic, gateway sessions with scripted connections, config shape).
 
 ## Roadmap
 
 Ideas for the next versions. Feedback and pull requests are welcome.
 
-- [ ] **Two-way relay**: Discord messages displayed in game.
+- [x] **Two-way relay**: Discord messages displayed in game (v1.1, [setup guide](docs/discord-bot-setup.md)).
 - [ ] **Admin commands from Discord** (kick, ban, map change, rcon) with role-based permissions.
 - [ ] **Live server status**: a message updated in real time with the map, score and player list.
 - [ ] **One webhook per event type**: for example chat in `#cs2-chat` and connections in `#cs2-logs`.

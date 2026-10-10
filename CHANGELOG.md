@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ## [1.0.0] - 2026-10-10
 
 ### Added
+- Optional Discord → game chat relay through a Discord bot (`DiscordToGame` config section, off by default): reads the webhook's channel by default, converts mentions, emojis, timestamps and markdown to plain text, strips CS2 color codes, ignores bots and webhooks (no echo), supports allowed roles, and rate limits what reaches the game. Built on a hand-written gateway client (heartbeat, resume, reconnect) with no new dependency.
+- `css_discordrelay_status` reports both directions.
+- [Discord bot setup guide](docs/discord-bot-setup.md).
+
+### Changed
+- `ConfigVersion` is now 2. Version 1 files keep loading unchanged.
+- HTTP requests use the `DiscordBot (url, version)` User-Agent required by Discord.
+
+## [1.0.0] - Unreleased
+
+### Added
 - Relay of global and team chat (`[TEAM]` prefix), player connections and disconnections (with reason), and map changes to a Discord webhook.
 - Map-change reconnects (transient `player_disconnect` + reconnection) are not announced.
 - Admin commands `css_discordrelay_test` (sends a test message) and `css_discordrelay_status` (state of the relay), restricted to `@css/root` in game.

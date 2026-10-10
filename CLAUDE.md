@@ -19,7 +19,7 @@ dotnet publish src/Cs2DiscordRelay -c Release -o out/Cs2DiscordRelay   # plugin 
 ```
 
 - Test filters use MTP syntax after `--` (`--filter-class`, `--filter-method`, `--filter-trait`), not VSTest's `--filter`.
-- `Category=Live` tests post to a real webhook and are skipped unless `DISCORD_WEBHOOK_URL` is set. Never hardcode or log a webhook URL.
+- `Category=Live` tests talk to real Discord and are skipped unless `DISCORD_WEBHOOK_URL` (and `DISCORD_BOT_TOKEN`, optionally `DISCORD_CHANNEL_ID`, for the gateway test) are set. Never hardcode or log a webhook URL or a bot token.
 - The published folder must contain only `Cs2DiscordRelay.dll`, `Cs2DiscordRelay.Core.dll`, the deps file and the pdbs. CSS and `Microsoft.Extensions.*` abstractions are provided by the host (`ExcludeAssets="runtime"` in the plugin csproj).
 
 ## Architecture
@@ -29,9 +29,12 @@ dotnet publish src/Cs2DiscordRelay -c Release -o out/Cs2DiscordRelay   # plugin 
   - `Options/`: `RelayOptions` and its `Normalize`, which fixes invalid values and reports one warning per fix.
   - `Formatting/`: `EventFilter`, `MessageFormatter` (text or embed), `DiscordMarkdown` (escape, sanitize, truncate), `PayloadBuilder` (Discord limits).
   - `Discord/`: `WebhookUrl` (validation and redaction), `WebhookDispatcher` (bounded queue, batching, 429/bucket/5xx handling), `RateLimitPolicy`, source-generated JSON payloads.
-  - `RelayService`: the facade the plugin uses.
-- `src/Cs2DiscordRelay`: thin CSS layer. It copies game data into `RelayEvent`s on the game thread, then calls `RelayService.Publish`. It also holds the config class and the admin commands.
-- `tests/Cs2DiscordRelay.Core.Tests`: delays go through an injected `Func<TimeSpan, CancellationToken, Task>` plus `FakeTimeProvider` (`Fakes/DispatcherHarness`), so tests never sleep.
+  - `RelayService`: the facade the plugin uses for game → Discord.
+  - `Discord/Gateway/`: hand-written gateway client (`GatewayClient`: identify, jittered heartbeat with zombie detection, resume, reconnect, fatal close codes) over `IGatewayTransport` (`WebSocketGatewayTransport` in production). `Discord/DiscordRestClient`, `Discord/BotToken`.
+  - `Inbound/`: Discord → game pipeline. `DiscordMessage` (wire → plain record), `InboundFilter` (channel, no bots/webhooks = no echo, roles), `GameChatFormatter` (markup → plain text, strips CS2 color control chars), `GameChatTemplate`, `InboundRateLimiter`, `InboundQueue` (bounded, time-stamped).
+  - `DiscordBridgeService`: the facade for Discord → game. `Drain` is the only call made from the game thread.
+- `src/Cs2DiscordRelay`: thin CSS layer. It copies game data into `RelayEvent`s on the game thread, then calls `RelayService.Publish`. It also holds the config classes (`PluginConfig`, `DiscordToGameConfig`, `ConfigVersion` 2), the admin commands, and a 0.5 s `AddTimer` that drains the bridge and calls `Server.PrintToChatAll`.
+- `tests/Cs2DiscordRelay.Core.Tests`: delays go through an injected `Func<TimeSpan, CancellationToken, Task>` plus `FakeTimeProvider` (`Fakes/DispatcherHarness`), so tests never sleep. Gateway tests use `Fakes/GatewayHarness`: scripted `FakeGatewayTransport` connections and `ManualDelays` the test elapses explicitly; use `SyncAsync` before elapsing a delay that depends on frames just pushed.
 - `tests/Cs2DiscordRelay.Tests`: config JSON shape and reflection checks on the plugin. `BasePlugin`'s constructor calls native code, so never instantiate the plugin in tests.
 
 ## Rules
@@ -41,6 +44,8 @@ dotnet publish src/Cs2DiscordRelay -c Release -o out/Cs2DiscordRelay   # plugin 
   - `css_plugins reload` resolves plugins by `ModuleName`, which must stay `Cs2DiscordRelay` (same as the DLL and folder);
   - `GameEvent` objects are only valid inside the handler.
 - Never block the game thread: no network I/O, `.Result` or `.Wait()` in handlers. `Publish` only enqueues.
+- Never call CSS natives (chat, players, commands) from a background thread: CSS throws "Invoked on a non-main thread". Background code hands data over through queues; the game thread polls them (timer). Do not use `Server.NextFrame` for this: its queue is unbounded and paused while the server hibernates.
+- Never log the bot token: use `BotToken.Redact`. Test tokens must not look like real ones (GitHub push protection), see `TestData.BotToken`.
 - Escape all player-controlled text with `DiscordMarkdown`. `allowed_mentions` stays empty.
 - Never log the webhook URL: use `WebhookUrl.Redact` on any external text (exception messages, Discord errors).
 - Logging goes through `[LoggerMessage]` partial methods (`Discord/Log.cs`, `PluginLog.cs`).
