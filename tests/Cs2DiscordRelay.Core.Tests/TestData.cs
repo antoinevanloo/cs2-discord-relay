@@ -6,6 +6,9 @@ internal static class TestData
 {
     public const ulong SteamId = 76561197960287930UL;
 
+    /// <summary>Has the shape of a bot token, but is obviously not one (and not flagged by secret scanners).</summary>
+    public const string BotToken = "fake-token-for-tests.abcd.not-a-real-secret-0123456789";
+
     public static readonly DateTimeOffset Now = new(2026, 10, 6, 20, 30, 0, TimeSpan.Zero);
 
     public static PlayerInfo Player(string name = "s1mple", PlayerTeam team = PlayerTeam.CounterTerrorist, bool bot = false) =>

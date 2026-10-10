@@ -21,15 +21,22 @@ public sealed partial class WebhookUrl
     private readonly string _raw;
     private readonly string _token;
 
-    private WebhookUrl(Uri uri, string raw, string token)
+    private WebhookUrl(Uri uri, string raw, string token, ulong? threadId)
     {
         Uri = uri;
         _raw = raw;
         _token = token;
+        ThreadId = threadId;
     }
 
     /// <summary>The endpoint to POST to. Internal so it cannot leak through the public API.</summary>
     internal Uri Uri { get; }
+
+    /// <summary>The webhook endpoint without query string, for "Get Webhook with Token".</summary>
+    internal Uri BaseUri => new(Uri.GetLeftPart(UriPartial.Path));
+
+    /// <summary>Forum thread the webhook posts into (<c>?thread_id=</c>), if any.</summary>
+    public ulong? ThreadId { get; }
 
     /// <summary>Validates a webhook URL copied from Discord.</summary>
     /// <param name="value">The URL, e.g. <c>https://discord.com/api/webhooks/{id}/{token}</c>.</param>
@@ -76,7 +83,11 @@ public sealed partial class WebhookUrl
         var threadId = ThreadIdQuery().Match(uri.Query);
         var builder = new UriBuilder(uri) { Query = threadId.Success ? $"thread_id={threadId.Groups["id"].Value}" : string.Empty };
 
-        url = new WebhookUrl(builder.Uri, trimmed, match.Groups["token"].Value);
+        url = new WebhookUrl(
+            builder.Uri,
+            trimmed,
+            match.Groups["token"].Value,
+            threadId.Success ? ulong.Parse(threadId.Groups["id"].Value, System.Globalization.CultureInfo.InvariantCulture) : null);
         error = null;
         return true;
     }

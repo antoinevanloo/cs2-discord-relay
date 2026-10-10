@@ -78,5 +78,15 @@ public sealed class WebhookUrlTests
         Assert.True(WebhookUrl.TryParse($"{DispatcherHarness.RawUrl}?wait=true&thread_id=987654321098765432&x=1", out var url, out _));
 
         Assert.Equal("?thread_id=987654321098765432", url.Uri.Query);
+        Assert.Equal(987654321098765432UL, url.ThreadId);
+        Assert.Equal(DispatcherHarness.RawUrl, url.BaseUri.AbsoluteUri);
+    }
+
+    [Fact]
+    public void Has_no_thread_id_by_default()
+    {
+        Assert.True(WebhookUrl.TryParse(DispatcherHarness.RawUrl, out var url, out _));
+
+        Assert.Null(url.ThreadId);
     }
 }
