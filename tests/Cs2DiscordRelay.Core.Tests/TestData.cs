@@ -25,4 +25,22 @@ internal static class TestData
     public static MapChangedEvent Map(string name = "de_dust2") => new(Now, name);
 
     public static RelayTestEvent Test(string requestedBy = "Console") => new(Now, requestedBy);
+
+    public const ulong ChannelId = 555;
+    public const ulong BotUserId = 42;
+
+    public static Core.Inbound.DiscordMessage DiscordMessage(
+        string content = "hello",
+        string author = "Nova",
+        ulong authorId = 7,
+        int type = 0,
+        ulong channelId = ChannelId,
+        bool bot = false,
+        bool webhook = false,
+        ulong[]? roles = null,
+        Dictionary<ulong, string>? mentions = null,
+        int images = 0,
+        int files = 0,
+        string[]? stickers = null) =>
+        new(channelId, type, content, authorId, author, bot, webhook, roles ?? [], mentions ?? [], images, files, stickers ?? []);
 }
