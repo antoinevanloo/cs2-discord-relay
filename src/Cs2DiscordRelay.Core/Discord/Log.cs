@@ -46,4 +46,13 @@ internal static partial class Log
 
     [LoggerMessage(24, LogLevel.Error, "Could not handle a Discord message ({ErrorType}: {Error}).")]
     public static partial void GatewayHandlerFailed(ILogger logger, string errorType, string error);
+
+    [LoggerMessage(25, LogLevel.Information, "Discord to game relay: reading #{ChannelName} as {BotName}.")]
+    public static partial void BridgeReading(ILogger logger, string channelName, string botName);
+
+    [LoggerMessage(26, LogLevel.Warning, "Discord to game relay: {Count} message(s) were not shown in game (rate limit: MaxMessagesPer10Seconds / UserCooldownSeconds).")]
+    public static partial void BridgeRateLimited(ILogger logger, long count);
+
+    [LoggerMessage(27, LogLevel.Warning, "Discord to game relay: cannot reach Discord ({Error}), retrying in {DelayMs} ms.")]
+    public static partial void BridgeRetrying(ILogger logger, string error, double delayMs);
 }
