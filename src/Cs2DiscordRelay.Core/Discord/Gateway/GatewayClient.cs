@@ -35,6 +35,8 @@ internal sealed class GatewayClient
 
     public static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(60);
 
+    public static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(30);
+
     private const long NoSequence = -1;
 
     private readonly BotToken _token;
@@ -144,7 +146,12 @@ internal sealed class GatewayClient
 
             try
             {
-                await transport.ConnectAsync(WithApiQuery(baseUrl), session.Token).ConfigureAwait(false);
+                using (var connectTimeout = CancellationTokenSource.CreateLinkedTokenSource(session.Token))
+                {
+                    // ClientWebSocket has no connect timeout of its own.
+                    connectTimeout.CancelAfter(ConnectTimeout);
+                    await transport.ConnectAsync(WithApiQuery(baseUrl), connectTimeout.Token).ConfigureAwait(false);
+                }
 
                 while (true)
                 {

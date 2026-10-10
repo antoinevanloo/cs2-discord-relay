@@ -220,6 +220,20 @@ public sealed class GatewayClientTests
     }
 
     [Fact]
+    public async Task Connection_timeouts_are_retried()
+    {
+        await using var h = new GatewayHarness(random: 1);
+        h.Script(() => new FakeGatewayTransport { ConnectError = new OperationCanceledException("connect timed out") });
+
+        h.Start();
+        await h.NextConnectionAsync();
+        await h.Delays.ElapseAsync(TimeSpan.FromSeconds(1));
+        await h.NextConnectionAsync();
+
+        Assert.Equal(GatewayState.Reconnecting, h.Client.State);
+    }
+
+    [Fact]
     public void Backoff_is_capped()
     {
         var client = new GatewayHarness(random: 1).Client;
